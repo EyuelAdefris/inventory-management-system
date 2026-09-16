@@ -2,6 +2,8 @@ import express, { Request, Response } from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 
+import authRoutes from "./routes/auth.routes";
+
 dotenv.config();
 
 const app = express();
@@ -29,6 +31,9 @@ app.use(
 // JSON Body Parser Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// API Routes
+app.use("/api/auth", authRoutes);
 
 // Health Check Route
 app.get("/api/health", (_req: Request, res: Response) => {
