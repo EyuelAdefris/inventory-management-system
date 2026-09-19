@@ -19,20 +19,48 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5001;
 
+// Helper to normalize origin URLs (strip whitespace and trailing slashes)
+const normalizeOrigin = (url?: string | null): string => {
+  if (!url) return "";
+  return url.trim().replace(/\/+$/, "");
+};
+
 // Dynamic CORS Configuration
-const allowedOrigins = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.split(",")
-  : ["http://localhost:5173", "http://localhost:3000"];
+const fallbackOrigins = [
+  process.env.CLIENT_URL,
+  ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(",") : []),
+  "https://inventory-app-abr0.onrender.com",
+  "http://localhost:5173",
+  "http://localhost:3000",
+];
+
+const allowedOrigins = Array.from(
+  new Set(
+    fallbackOrigins
+      .filter((origin): origin is string => Boolean(origin && origin.trim()))
+      .map(normalizeOrigin)
+  )
+);
 
 app.use(
   cors({
     origin: (origin, callback) => {
       // Allow requests with no origin (like mobile apps, curl, or server-to-server calls)
-      if (!origin || allowedOrigins.includes(origin) || process.env.NODE_ENV !== "production") {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
+      if (!origin) {
+        return callback(null, true);
       }
+
+      const normalizedOrigin = normalizeOrigin(origin);
+
+      if (
+        process.env.NODE_ENV !== "production" ||
+        allowedOrigins.includes(normalizedOrigin)
+      ) {
+        return callback(null, true);
+      }
+
+      // Deny CORS without throwing an unhandled server-side Error
+      return callback(null, false);
     },
     credentials: true,
   })
