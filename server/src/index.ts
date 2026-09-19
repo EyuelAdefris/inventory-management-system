@@ -42,29 +42,35 @@ const allowedOrigins = Array.from(
   )
 );
 
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps, curl, or server-to-server calls)
-      if (!origin) {
-        return callback(null, true);
-      }
+const corsOptions: cors.CorsOptions = {
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps, curl, or server-to-server calls)
+    if (!origin) {
+      return callback(null, true);
+    }
 
-      const normalizedOrigin = normalizeOrigin(origin);
+    const normalizedOrigin = normalizeOrigin(origin);
 
-      if (
-        process.env.NODE_ENV !== "production" ||
-        allowedOrigins.includes(normalizedOrigin)
-      ) {
-        return callback(null, true);
-      }
+    if (
+      process.env.NODE_ENV !== "production" ||
+      allowedOrigins.includes(normalizedOrigin)
+    ) {
+      return callback(null, true);
+    }
 
-      // Deny CORS without throwing an unhandled server-side Error
-      return callback(null, false);
-    },
-    credentials: true,
-  })
-);
+    // Deny CORS without throwing an unhandled server-side Error
+    return callback(null, false);
+  },
+  credentials: true,
+  optionsSuccessStatus: 200,
+};
+
+// 1. CORS Middleware (placed at the top before body parsers and routes)
+app.use(cors(corsOptions));
+
+// Explicitly handle preflight OPTIONS across all routes
+app.options("*", cors(corsOptions));
+
 
 // JSON Body Parser Middleware
 app.use(express.json());
