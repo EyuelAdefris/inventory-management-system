@@ -17,7 +17,7 @@ export const authenticate = (req: Request, res: Response, next: NextFunction): v
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    res.status(401).json({ message: "Authentication token missing or invalid" });
+    res.status(401).json({ error: "Authentication token missing or invalid", message: "Authentication token missing or invalid" });
     return;
   }
 
@@ -26,7 +26,7 @@ export const authenticate = (req: Request, res: Response, next: NextFunction): v
   try {
     const decoded = verifyToken(token) as TokenPayload;
     if (!decoded || !decoded.userId || !decoded.role) {
-      res.status(401).json({ message: "Invalid token payload" });
+      res.status(401).json({ error: "Invalid token payload", message: "Invalid token payload" });
       return;
     }
     req.user = {
@@ -35,7 +35,7 @@ export const authenticate = (req: Request, res: Response, next: NextFunction): v
     };
     next();
   } catch (error) {
-    res.status(401).json({ message: "Invalid or expired token" });
+    res.status(401).json({ error: "Invalid or expired token", message: "Invalid or expired token" });
     return;
   }
 };
@@ -43,7 +43,7 @@ export const authenticate = (req: Request, res: Response, next: NextFunction): v
 export const authorize = (roles: string[]) => {
   return (req: Request, res: Response, next: NextFunction): void => {
     if (!req.user || !roles.includes(req.user.role)) {
-      res.status(403).json({ message: "Forbidden: Insufficient permissions" });
+      res.status(403).json({ error: "Forbidden: Insufficient permissions", message: "Forbidden: Insufficient permissions" });
       return;
     }
     next();

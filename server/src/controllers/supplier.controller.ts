@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import prisma from "../lib/prisma";
 import { supplierSchema } from "../schemas/supplier.schema";
 
-export const getSuppliers = async (_req: Request, res: Response): Promise<void> => {
+export const getSuppliers = async (_req: Request, res: Response): Promise<any> => {
   try {
     const suppliers = await prisma.supplier.findMany({
       include: {
@@ -18,22 +18,26 @@ export const getSuppliers = async (_req: Request, res: Response): Promise<void> 
       },
     });
 
-    res.status(200).json(suppliers);
+    return res.status(200).json(suppliers);
   } catch (error) {
     console.error("Get suppliers error:", error);
-    res.status(500).json({ message: "Internal server error" });
+    const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred";
+    return res.status(400).json({
+      error: errorMessage,
+      message: errorMessage,
+    });
   }
 };
 
-export const createSupplier = async (req: Request, res: Response): Promise<void> => {
+export const createSupplier = async (req: Request, res: Response): Promise<any> => {
   try {
     const parseResult = supplierSchema.safeParse(req.body);
     if (!parseResult.success) {
-      res.status(400).json({
+      return res.status(400).json({
+        error: "Invalid input data",
         message: "Invalid input data",
         errors: parseResult.error.flatten().fieldErrors,
       });
-      return;
     }
 
     const { name, contactPerson, email, phone, address } = parseResult.data;
@@ -48,9 +52,13 @@ export const createSupplier = async (req: Request, res: Response): Promise<void>
       },
     });
 
-    res.status(201).json(supplier);
+    return res.status(201).json(supplier);
   } catch (error) {
     console.error("Create supplier error:", error);
-    res.status(500).json({ message: "Internal server error" });
+    const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred";
+    return res.status(400).json({
+      error: errorMessage,
+      message: errorMessage,
+    });
   }
 };

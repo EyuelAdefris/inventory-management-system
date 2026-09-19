@@ -25,6 +25,7 @@ async function main() {
   const adminUser = await prisma.user.create({
     data: {
       name: "Admin User",
+      username: "admin",
       email: "admin@inventory.com",
       password: adminPasswordHash,
       role: Role.ADMIN,
@@ -34,13 +35,14 @@ async function main() {
   const staffUser = await prisma.user.create({
     data: {
       name: "Staff User",
+      username: "staff",
       email: "staff@inventory.com",
       password: staffPasswordHash,
       role: Role.STAFF,
     },
   });
 
-  console.log(`✅ Seeded 2 users: ${adminUser.email} (ADMIN), ${staffUser.email} (STAFF)`);
+  console.log(`✅ Seeded 2 users: ${adminUser.username} (ADMIN), ${staffUser.username} (STAFF)`);
 
   // 3. Seed Categories
   const categoryElectronics = await prisma.category.create({

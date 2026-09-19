@@ -2,11 +2,13 @@ import { Request, Response } from "express";
 import prisma from "../lib/prisma";
 import { createProductSchema, updateProductSchema } from "../schemas/product.schema";
 
-export const getProducts = async (req: Request, res: Response): Promise<void> => {
+export const getProducts = async (req: Request, res: Response): Promise<any> => {
   try {
     const { search, categoryId } = req.query;
 
-    const where: any = {};
+    const where: any = {
+      isActive: true,
+    };
 
     if (categoryId && typeof categoryId === "string") {
       where.categoryId = categoryId;
@@ -30,14 +32,18 @@ export const getProducts = async (req: Request, res: Response): Promise<void> =>
       },
     });
 
-    res.status(200).json(products);
+    return res.status(200).json(products);
   } catch (error) {
     console.error("Get products error:", error);
-    res.status(500).json({ message: "Internal server error" });
+    const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred";
+    return res.status(400).json({
+      error: errorMessage,
+      message: errorMessage,
+    });
   }
 };
 
-export const getProductById = async (req: Request, res: Response): Promise<void> => {
+export const getProductById = async (req: Request, res: Response): Promise<any> => {
   try {
     const { id } = req.params;
 
@@ -50,26 +56,29 @@ export const getProductById = async (req: Request, res: Response): Promise<void>
     });
 
     if (!product) {
-      res.status(404).json({ message: "Product not found" });
-      return;
+      return res.status(404).json({ error: "Product not found", message: "Product not found" });
     }
 
-    res.status(200).json(product);
+    return res.status(200).json(product);
   } catch (error) {
     console.error("Get product by ID error:", error);
-    res.status(500).json({ message: "Internal server error" });
+    const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred";
+    return res.status(400).json({
+      error: errorMessage,
+      message: errorMessage,
+    });
   }
 };
 
-export const createProduct = async (req: Request, res: Response): Promise<void> => {
+export const createProduct = async (req: Request, res: Response): Promise<any> => {
   try {
     const parseResult = createProductSchema.safeParse(req.body);
     if (!parseResult.success) {
-      res.status(400).json({
+      return res.status(400).json({
+        error: "Invalid input data",
         message: "Invalid input data",
         errors: parseResult.error.flatten().fieldErrors,
       });
-      return;
     }
 
     const {
@@ -96,8 +105,7 @@ export const createProduct = async (req: Request, res: Response): Promise<void> 
       where: { id: categoryId },
     });
     if (!categoryExists) {
-      res.status(400).json({ message: "Category not found" });
-      return;
+      return res.status(400).json({ error: "Category not found", message: "Category not found" });
     }
 
     // Verify supplier exists
@@ -105,8 +113,7 @@ export const createProduct = async (req: Request, res: Response): Promise<void> 
       where: { id: supplierId },
     });
     if (!supplierExists) {
-      res.status(400).json({ message: "Supplier not found" });
-      return;
+      return res.status(400).json({ error: "Supplier not found", message: "Supplier not found" });
     }
 
     // Check SKU uniqueness
@@ -114,8 +121,7 @@ export const createProduct = async (req: Request, res: Response): Promise<void> 
       where: { sku },
     });
     if (skuExists) {
-      res.status(400).json({ message: "Product with this SKU already exists" });
-      return;
+      return res.status(400).json({ error: "Product with this SKU already exists", message: "Product with this SKU already exists" });
     }
 
     const product = await prisma.product.create({
@@ -136,14 +142,26 @@ export const createProduct = async (req: Request, res: Response): Promise<void> 
       },
     });
 
-    res.status(201).json(product);
+    await prisma.notification.create({
+      data: {
+        title: "Product Added",
+        message: `Product Added: ${product.name}`,
+        type: "PRODUCT_ADD",
+      },
+    });
+
+    return res.status(201).json(product);
   } catch (error) {
     console.error("Create product error:", error);
-    res.status(500).json({ message: "Internal server error" });
+    const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred";
+    return res.status(400).json({
+      error: errorMessage,
+      message: errorMessage,
+    });
   }
 };
 
-export const updateProduct = async (req: Request, res: Response): Promise<void> => {
+export const updateProduct = async (req: Request, res: Response): Promise<any> => {
   try {
     const { id } = req.params;
 
@@ -152,17 +170,16 @@ export const updateProduct = async (req: Request, res: Response): Promise<void> 
     });
 
     if (!existingProduct) {
-      res.status(404).json({ message: "Product not found" });
-      return;
+      return res.status(404).json({ error: "Product not found", message: "Product not found" });
     }
 
     const parseResult = updateProductSchema.safeParse(req.body);
     if (!parseResult.success) {
-      res.status(400).json({
+      return res.status(400).json({
+        error: "Invalid input data",
         message: "Invalid input data",
         errors: parseResult.error.flatten().fieldErrors,
       });
-      return;
     }
 
     const {
@@ -186,8 +203,7 @@ export const updateProduct = async (req: Request, res: Response): Promise<void> 
         where: { id: categoryId },
       });
       if (!categoryExists) {
-        res.status(400).json({ message: "Category not found" });
-        return;
+        return res.status(400).json({ error: "Category not found", message: "Category not found" });
       }
     }
 
@@ -197,8 +213,7 @@ export const updateProduct = async (req: Request, res: Response): Promise<void> 
         where: { id: supplierId },
       });
       if (!supplierExists) {
-        res.status(400).json({ message: "Supplier not found" });
-        return;
+        return res.status(400).json({ error: "Supplier not found", message: "Supplier not found" });
       }
     }
 
@@ -208,8 +223,7 @@ export const updateProduct = async (req: Request, res: Response): Promise<void> 
         where: { sku },
       });
       if (skuExists) {
-        res.status(400).json({ message: "SKU is already in use by another product" });
-        return;
+        return res.status(400).json({ error: "SKU is already in use by another product", message: "SKU is already in use by another product" });
       }
     }
 
@@ -236,14 +250,26 @@ export const updateProduct = async (req: Request, res: Response): Promise<void> 
       },
     });
 
-    res.status(200).json(updatedProduct);
+    await prisma.notification.create({
+      data: {
+        title: "Product Updated",
+        message: `Product Updated: ${updatedProduct.name}`,
+        type: "PRODUCT_UPDATE",
+      },
+    });
+
+    return res.status(200).json(updatedProduct);
   } catch (error) {
     console.error("Update product error:", error);
-    res.status(500).json({ message: "Internal server error" });
+    const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred";
+    return res.status(400).json({
+      error: errorMessage,
+      message: errorMessage,
+    });
   }
 };
 
-export const deleteProduct = async (req: Request, res: Response): Promise<void> => {
+export const deleteProduct = async (req: Request, res: Response): Promise<any> => {
   try {
     const { id } = req.params;
 
@@ -252,17 +278,29 @@ export const deleteProduct = async (req: Request, res: Response): Promise<void> 
     });
 
     if (!existingProduct) {
-      res.status(404).json({ message: "Product not found" });
-      return;
+      return res.status(404).json({ error: "Product not found", message: "Product not found" });
     }
 
-    await prisma.product.delete({
+    await prisma.product.update({
       where: { id },
+      data: { isActive: false },
     });
 
-    res.status(200).json({ message: "Product deleted successfully" });
+    await prisma.notification.create({
+      data: {
+        title: "Product Soft-Deleted",
+        message: `Product Soft-Deleted: ${existingProduct.name}`,
+        type: "PRODUCT_DELETE",
+      },
+    });
+
+    return res.status(200).json({ message: "Product deleted successfully" });
   } catch (error) {
     console.error("Delete product error:", error);
-    res.status(500).json({ message: "Internal server error" });
+    const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred";
+    return res.status(400).json({
+      error: errorMessage,
+      message: errorMessage,
+    });
   }
 };
